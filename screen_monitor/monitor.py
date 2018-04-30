@@ -11,7 +11,6 @@ class Monitor:
     def __init__(self, coordinate):
         self.coordinate = coordinate or Coordinate()
         self.screen_image = None
-        self.image_matcher = ImageMatcher()
 
     def _next_screen(self):
         raise NotImplementedError
@@ -23,9 +22,9 @@ class Monitor:
     def monitor_one_game(self):
         self.monitor_before_any_action()
         print("Acting ...")
-        from position_helper.visualize_areas import Visualizer
-        vs = Visualizer(img=self.screen_image)
-        vs.select_and_show_areas(areas=None)
+        # from position_helper.visualize_areas import Visualizer
+        # vs = Visualizer(img=self.screen_image)
+        # vs.select_and_show_areas(areas=None)
         # self.monitor_actions()
 
     # handle dealer position, SB/BB position, BLINDS before first player acts
@@ -68,31 +67,11 @@ class Monitor:
         dealer_position = None
         dealer_areas = self.coordinate.get_dealer_areas()
 
-        # from position_helper.visualize_areas import Visualizer
-        # vs = Visualizer(self.screen_image)
-        # vs.select_and_show_areas(dealer_areas)
-
-        from PIL import Image
-        dealer_array = np.array(Image.open("./background/dealer.png"))
-        sum_ = None
-        mini = 999999
-        for i in range(510, 620):
-            for j in range(200, 280):
-                part_img = self.screen_image.crop((i, j, i + 24, j + 24))
-                sum_ = (np.array(part_img) - dealer_array).sum()
-                if mini > sum_:
-                    mini = sum_
-                if sum_ == 0:
-                    print(i, j)
-                    return
-        print(mini)
-        return
         while dealer_position is None:
             self._next_screen()
             images = [self.screen_image.crop(area) for area in dealer_areas]
             arrays = [np.array(image) for image in images]
             dealer_position = self.image_matcher.match_dealer(arrays)
-        print(dealer_position)
         return dealer_position
 
     def monitor_actions(self):
@@ -116,6 +95,7 @@ class ScreenMonitor(Monitor):
         super().__init__(coordinate)
         self.location_finder = lf or LocationFinder(hwnd=None)
         self.screen_area = self.location_finder.get_window_area()
+        self.image_matcher = ImageMatcher(mode="play")
 
     def _next_screen(self):
         self.screen_image = ImageGrab.grab(self.screen_area)
@@ -127,6 +107,7 @@ class ReplayMonitor(Monitor):
         super().__init__(coordinate)
         self.location_finder = lf or LocationFinder(hwnd=None)
         self.screen_area = self.location_finder.get_window_area()
+        self.image_matcher = ImageMatcher(mode="replay")
 
     def _next_screen(self):
         self.screen_image = ImageGrab.grab(self.screen_area)
@@ -135,10 +116,10 @@ class ReplayMonitor(Monitor):
         self._next_screen()
         # find players
         players = self.find_players()
-        print(players)
+        print("players", players)
 
         dealer_position = self.find_dealer()
-        print("D", dealer_position)
+        print("Dealer: ", dealer_position)
 
 
 def main():
